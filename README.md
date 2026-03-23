@@ -27,6 +27,11 @@ Knicks win probability: 65.9%
 
 ---
 
+## 📊 Knicks Rolling Win %
+
+![Knicks Chart](images/knicks_win_pct_chart.png)
+
+---
 ## ▶️ Run Locally
 
 ```bash

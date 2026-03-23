@@ -85,6 +85,7 @@ plt.ylabel("Win %")
 plt.xticks(rotation=45)
 plt.tight_layout()
 
+plt.savefig("knicks_win_pct_chart.png")
 plt.show()
 
 print("Cleaned shape:", df.shape)
