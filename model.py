@@ -1,4 +1,7 @@
 import pandas as pd
+import matplotlib
+matplotlib.use('TkAgg')  # forces window to pop up on Mac
+import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import train_test_split
@@ -71,6 +74,18 @@ df = df.dropna(subset=[
     "PTS_avg_3",
     "Opp_PTS_avg_3"
 ]).reset_index(drop=True)
+
+plt.figure(figsize=(10,5))
+plt.plot(df["Date"], df["Win_pct_last_5"], marker='o')
+
+plt.title("Knicks Rolling Win %")
+plt.xlabel("Date")
+plt.ylabel("Win %")
+
+plt.xticks(rotation=45)
+plt.tight_layout()
+
+plt.show()
 
 print("Cleaned shape:", df.shape)
 print("\nCleaned preview:\n")
