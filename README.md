@@ -1,3 +1,34 @@
-# New York Knicks Win Probability Model
+# 🏀 Knicks Win Probability Model
 
-A machine learning project that predicts the probability the New York Knicks win each game based on team performance trends and game context.
+A machine learning project that predicts the probability of the New York Knicks winning each game based on rolling performance trends.
+
+---
+
+## 🚀 Features
+
+- Rolling averages (last 3 & 5 games)
+- Logistic regression classification model
+- Win probability predictions
+- Time-aware train/test split
+
+---
+
+## 📊 Example Output
+
+Knicks win probability: 65.9%
+
+---
+
+## 🧠 Tech Stack
+
+- Python
+- Pandas
+- Scikit-learn
+
+---
+
+## ▶️ Run Locally
+
+```bash
+pip install -r requirements.txt
+python model.py
