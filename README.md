@@ -1,6 +1,6 @@
 # 🏀 Knicks Win Probability Model
 
-A machine learning project that predicts the probability of the New York Knicks winning each game based on rolling performance trends.
+A machine learning project that predicts the probability of the New York Knicks winning each game based on rolling performance trends. Being born & raised in NYC and life-long NY Knicks fan, this one was special!
 
 ---
 
