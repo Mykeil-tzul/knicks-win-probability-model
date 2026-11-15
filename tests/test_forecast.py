@@ -39,4 +39,7 @@ class ForecastTests(unittest.TestCase):
         self.assertGreaterEqual(len(snapshot["knicks"]), 75)
         app = AppTest.from_file(str(ROOT / "app.py")).run(timeout=20)
         self.assertFalse(app.exception)
-        self.assertTrue(any("Model performance" in tab.label for tab in app.tabs))
+        self.assertEqual(len(app.tabs), 0)
+        self.assertEqual([heading.value for heading in app.header],
+                         ["Knicks Film Room", "Game preview", "Season tracker", "Model performance"])
+        self.assertEqual(len(app.get("video")), 2)

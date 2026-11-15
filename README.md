@@ -51,3 +51,7 @@ This update changes the dashboard and adds live-season evaluation. It uses the s
 ### A stronger comparison
 
 Plain Elo uses team strength and a fixed home-court adjustment, with ratings updated from earlier results. On the same 164 Knicks games, Elo picked the winner **69.5%** of the time versus **68.3%** for logistic regression. Logistic regression had lower Brier error (**0.195** versus **0.202**). I kept the logistic probabilities in the app and added both results so fans can see the difference between calling the winner and estimating the chance of a win.
+
+The dashboard is one scrollable page. Both championship videos are embedded in the Film Room near the top, followed by Game Preview, Season Tracker and Model Performance. The links under the players open the same videos on YouTube.
+
+Photos: [Knicks playing at Madison Square Garden](https://commons.wikimedia.org/wiki/File:Knicks_playing_at_Madison_Square_Garden.jpg) by GoCuse44, public domain, and [Interior of Madison Square Garden, 2024](https://commons.wikimedia.org/wiki/File:Interior_of_Madison_Square_Garden_2024.png) by FloridaMan21, CC0.

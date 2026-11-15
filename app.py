@@ -66,20 +66,31 @@ def render():
         .stApp {background: #081221;}
         .knicks-hero {display:flex; align-items:center; gap:1.45rem; flex-wrap:wrap;
           border:1px solid #345788; border-left:5px solid #ff8547; border-radius:20px;
-          padding:1.6rem 2rem; background:linear-gradient(115deg,#10366d,#111e35 68%);
+          padding:1.6rem 2rem;
+          background:linear-gradient(100deg,#10366dfc 10%,#111e35f2 52%,#111e355c),
+          var(--garden-photo) center 50% / cover #111e35;
           margin-bottom:1rem}
         .knicks-hero img {width:118px;height:105px;object-fit:contain}
         .knicks-hero h1 {font-size:clamp(2rem,5vw,3.7rem);line-height:1.05;margin:0;padding:0}
         .knicks-hero p {margin:.5rem 0 0;color:#cddcf5}
+        .knicks-nav {display:flex; flex-wrap:wrap; gap:.45rem 1.2rem; margin:.15rem 0 .6rem}
+        .knicks-nav a {color:#ffc4a1; text-underline-offset:.2rem}
         div[data-testid="stMetric"] {background:#101f36;border:1px solid #2a4262;
           border-radius:13px;padding:.7rem 1rem}
         </style>
         """, unsafe_allow_html=True)
     logo = base64.b64encode((ROOT / "images/knicks.svg").read_bytes()).decode()
+    garden = base64.b64encode((ROOT / "images/garden-knicks-game.jpg").read_bytes()).decode()
     st.markdown(f"""
-        <div class="knicks-hero"><img src="data:image/svg+xml;base64,{logo}" alt="New York Knicks logo">
+        <div class="knicks-hero" style="--garden-photo:url(data:image/jpeg;base64,{garden})"><img src="data:image/svg+xml;base64,{logo}" alt="New York Knicks logo">
         <div><h1>Knicks Win Predictor</h1>
         <p>2026–27 regular season · Pregame win probabilities and final results</p></div></div>
+        <nav class="knicks-nav" aria-label="Jump to a section">
+          <a href="#knicks-film-room">Film room</a>
+          <a href="#game-preview">Game preview</a>
+          <a href="#season-tracker">Season tracker</a>
+          <a href="#model-performance">Model performance</a>
+        </nav>
         """, unsafe_allow_html=True)
 
     season = json.loads((ROOT / "data/season.json").read_text())
@@ -95,10 +106,17 @@ def render():
     correct, live_brier = grade_picks(graded)
     wins = sum(actual(g)[0] == "W" for g in finals)
 
-    overview, schedule_tab, evaluation, film = st.tabs(
-        ["🏀 Game preview", "📅 Season tracker", "📊 Model performance", "🎬 Knicks film room"]
-    )
-    with overview:
+    with st.container():
+        st.header("Knicks Film Room", anchor="knicks-film-room")
+        st.write("I grew up watching the Knicks with my dad. These are two moments from the title run I keep coming back to.")
+        for column, (title, url) in zip(st.columns(2), FILM.items()):
+            with column:
+                st.subheader(title)
+                st.video(url)
+                st.link_button("Watch on YouTube", url)
+
+    with st.container():
+        st.header("Game preview", anchor="game-preview")
         if upcoming:
             selected = st.selectbox("Choose an upcoming game", upcoming, format_func=lambda g:
                 f"{time(g['tip']):%b %d} · {matchup(g)[0]} · {matchup(g)[1]}")
@@ -140,11 +158,14 @@ def render():
         two.metric("Correct recorded picks", f"{correct}/{len(graded)}" if graded else "Pending")
         three.metric("Last final", actual(finals[-1])[1] if finals else "Pending")
 
-    with schedule_tab:
-        view = st.selectbox("Show games", ["All", "Upcoming", "Final"])
-        opponent = st.selectbox("Opponent", ["All opponents", *sorted({matchup(game)[0] for game in games})])
-        result_filter = st.selectbox("Result", ["Any result", "Wins", "Losses"])
-        graded_filter = st.checkbox("Show only graded games")
+    with st.container():
+        st.header("Season tracker", anchor="season-tracker")
+        filters, arena = st.columns([3, 1])
+        arena.image(str(ROOT / "images/garden-interior.png"), caption="Inside Madison Square Garden")
+        view = filters.selectbox("Show games", ["All", "Upcoming", "Final"])
+        opponent = filters.selectbox("Opponent", ["All opponents", *sorted({matchup(game)[0] for game in games})])
+        result_filter = filters.selectbox("Result", ["Any result", "Wins", "Losses"])
+        graded_filter = filters.checkbox("Show only graded games")
         active_ids = {g["id"] for g in upcoming}
         rows = []
         for game in games:
@@ -176,7 +197,8 @@ def render():
             st.info("No games match these filters.")
         st.caption("Games completed before the first recorded pick show the final score only. TBD Cup matchups appear once teams are assigned.")
 
-    with evaluation:
+    with st.container():
+        st.header("Model performance", anchor="model-performance")
         backtest = model["backtest"]
         a, b, c, d = st.columns(4)
         a.metric("Model W/L accuracy", f"{backtest['model']['accuracy']:.1%}")
@@ -198,14 +220,6 @@ def render():
         b.metric("W/L hit rate", f"{correct / len(graded):.1%}" if graded else "Pending")
         c.metric("Live Brier score", f"{live_brier:.3f}" if live_brier is not None else "Pending")
         st.write(f"Live season tracking starts with the first saved pregame pick. So far, {correct} of {len(graded)} graded picks were correct.")
-
-    with film:
-        st.subheader("Back to the championship")
-        st.write("I grew up watching the Knicks with my dad. This is where I keep a couple of clips from the title run.")
-        title = st.selectbox("Choose a video", list(FILM))
-        st.link_button("Watch on YouTube", FILM[title])
-        if st.checkbox("Load the YouTube player"):
-            st.video(FILM[title])
 
 
 if __name__ == "__main__":
