@@ -40,4 +40,4 @@ python -m unittest discover -s tests
 
 To reproduce the trained weights, install `requirements-training.txt` and run `python -m scripts.train`. Run `python -m scripts.refresh` to fetch the current season. Set up Streamlit Community Cloud with this repo, branch `main`, and entry point `app.py`. The original `model.py` path also launches the dashboard.
 
-Historical results were aggregated from the [NBA Cloud Data Platform](https://github.com/Mykeil-tzul/anthony-edwards-pipeline) player game logs, sourced from the [nba_data archive](https://github.com/llimllib/nba_data). Current fixtures and scores come from [ESPN](https://www.espn.com/nba/team/schedule/_/name/ny/new-york-knicks). Team logo from the [NBA](https://www.nba.com/knicks/).
+Historical results were aggregated from the [NBA Cloud Data Platform](https://github.com/Mykeil-tzul/wonderworlds/tree/373000e259ef1c68681160fa04a329004e43606d) player game logs, sourced from the [nba_data archive](https://github.com/llimllib/nba_data). Current fixtures and scores come from [ESPN](https://www.espn.com/nba/team/schedule/_/name/ny/new-york-knicks). Team logo from the [NBA](https://www.nba.com/knicks/).
