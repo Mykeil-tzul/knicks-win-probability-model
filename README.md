@@ -1,39 +1,37 @@
-# 🏀 Knicks Win Probability Model
+# Knicks Win Predictor
 
-A machine learning project that predicts the probability of the New York Knicks winning each game based on rolling performance trends. Being born & raised in NYC and life-long NY Knicks fan, this one was special!
+I built this app to answer one question before each Knicks game in the 2026–27 regular season: how likely are they to win? Pick a matchup to see the model's W/L call, its win and loss probabilities, and the factors that moved the prediction. The season tracker puts those picks next to the actual scores.
 
----
+## How it works
 
-## 🚀 Features
+The model is a logistic regression trained on 4,920 NBA regular-season games from 2022–23 through 2025–26. It learns from the entire league so it can compare the Knicks with the team they're about to play. It uses home court, the gap in team strength (Elo), recent scoring margins, recent win rates, and rest. The recent-form inputs use up to 10 games, with a small league-average starting point so the first few games of a season have less influence.
 
-- Rolling averages (last 3 & 5 games)
-- Logistic regression classification model
-- Win probability predictions
-- Time-aware train/test split
+Features use results from earlier dates only. The model does not use the game score it's trying to predict, betting lines, injuries, or lineups. A W pick means the Knicks' estimated win probability is at least 50%.
 
----
+## How I tested it
 
-## 📊 Example Output
+I fit the model on seasons before each test season and predicted the Knicks' games in that later season. I compared it with a baseline that uses the historical league home-win rate for every game.
 
-Knicks win probability: 65.9%
+| Knicks games in the test | Games | Model W/L accuracy | Baseline W/L accuracy |
+| --- | ---: | ---: | ---: |
+| 2024–25 | 82 | 67.1% | 53.7% |
+| 2025–26 | 82 | 69.5% | 61.0% |
+| Combined | 164 | 68.3% | 57.3% |
 
----
+The combined Brier score was 0.195 for the model and 0.245 for the baseline. This measures how far the probabilities were from actual outcomes, with lower scores indicating smaller errors. These are historical results. The app tracks real 2026–27 picks separately.
 
-## 🧠 Tech Stack
+## Game-day updates
 
-- Python
-- Pandas
-- Scikit-learn
+GitHub Actions is configured to refresh the ESPN schedule and league scores hourly. The dashboard reads the last published snapshot and shows its timestamp. Future fixtures show early projections based on results available at refresh time. The first successfully saved pick within 24 hours of tipoff is preserved and compared with the final score. An altered tipoff invalidates that saved pick for grading. Games played before tracking started show final scores only. Unassigned NBA Cup matchups appear when ESPN lists the teams. UTC timestamps are displayed in Eastern Time.
 
----
+## Run it locally
 
-## 📊 Knicks Rolling Win %
+```sh
+python -m pip install -r requirements.txt
+python -m streamlit run app.py
+python -m unittest discover -s tests
+```
 
-![Knicks Chart](images/knicks_win_pct_chart.png)
+To reproduce the trained weights, install `requirements-training.txt` and run `python -m scripts.train`. Run `python -m scripts.refresh` to fetch the current season. Set up Streamlit Community Cloud with this repo, branch `main`, and entry point `app.py`. The original `model.py` path also launches the dashboard.
 
----
-## ▶️ Run Locally
-
-```bash
-pip install -r requirements.txt
-python model.py
+Historical results were aggregated from the [NBA Cloud Data Platform](https://github.com/Mykeil-tzul/anthony-edwards-pipeline) player game logs, sourced from the [nba_data archive](https://github.com/llimllib/nba_data). Current fixtures and scores come from [ESPN](https://www.espn.com/nba/team/schedule/_/name/ny/new-york-knicks). Team logo from the [NBA](https://www.nba.com/knicks/).
