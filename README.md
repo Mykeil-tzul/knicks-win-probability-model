@@ -1,5 +1,7 @@
 # Knicks Win Predictor
 
+**[Open the live Streamlit dashboard](https://knicks-win-probability-model-bymt.streamlit.app/)**
+
 I built this app to answer one question before each Knicks game in the 2026–27 regular season: how likely are they to win? Pick a matchup to see the model's W/L call, its win and loss probabilities, and the factors that moved the prediction. The season tracker puts those picks next to the actual scores.
 
 ## How it works
