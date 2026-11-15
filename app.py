@@ -42,6 +42,23 @@ def saved_pick(game, ledger):
     return None
 
 
+def grade_picks(graded):
+    """Measure only picks actually recorded before tipoff."""
+    correct, errors = 0, []
+    for game, entry in graded:
+        outcome, _ = actual(game)
+        probability = entry["probability"]
+        correct += outcome == pick(probability)
+        errors.append((probability - (outcome == "W")) ** 2)
+    return correct, sum(errors) / len(errors) if errors else None
+
+
+FILM = {
+    "The Knicks are champions · Team all-access": "https://www.youtube.com/watch?v=rsHQ96CLq70",
+    "2026 Finals trophy ceremony · ESPN": "https://www.youtube.com/watch?v=ITwzTEeiVeA",
+}
+
+
 def render():
     st.set_page_config(page_title="Knicks Win Predictor", page_icon="🏀", layout="wide")
     st.markdown("""
@@ -75,10 +92,12 @@ def render():
     finals = [g for g in games if g["state"] == "final"]
     upcoming = [g for g in games if g["state"] == "scheduled" and time(g["tip"]) > now]
     graded = [(g, entry) for g in finals if (entry := saved_pick(g, ledger))]
-    correct = sum(actual(g)[0] == pick(entry["probability"]) for g, entry in graded)
+    correct, live_brier = grade_picks(graded)
     wins = sum(actual(g)[0] == "W" for g in finals)
 
-    overview, schedule_tab, evaluation = st.tabs(["🏀 Game preview", "📅 Season tracker", "📊 Model performance"])
+    overview, schedule_tab, evaluation, film = st.tabs(
+        ["🏀 Game preview", "📅 Season tracker", "📊 Model performance", "🎬 Knicks film room"]
+    )
     with overview:
         if upcoming:
             selected = st.selectbox("Choose an upcoming game", upcoming, format_func=lambda g:
@@ -95,6 +114,11 @@ def render():
                 b.metric("Win probability", f"{p:.1%}")
                 c.metric("Loss probability", f"{1-p:.1%}")
                 st.progress(p)
+                st.caption("Lean" if abs(p - .5) < .10 else "Stronger lean")
+                fan = st.radio("Make your own call", ["No pick", "W · Win", "L · Loss"],
+                               horizontal=True, key=f"fan-{selected['id']}")
+                if fan != "No pick":
+                    st.write("You and the model agree." if fan[0] == pick(p) else "You and the model disagree.")
                 st.caption("Recorded pregame pick." if saved else "Early projection. It changes as more games are played.")
                 st.subheader("What drives this pick?")
                 factors = pd.DataFrame({"Factor": FEATURES, "Contribution": forecast["factors"]})
@@ -118,6 +142,9 @@ def render():
 
     with schedule_tab:
         view = st.selectbox("Show games", ["All", "Upcoming", "Final"])
+        opponent = st.selectbox("Opponent", ["All opponents", *sorted({matchup(game)[0] for game in games})])
+        result_filter = st.selectbox("Result", ["Any result", "Wins", "Losses"])
+        graded_filter = st.checkbox("Show only graded games")
         active_ids = {g["id"] for g in upcoming}
         rows = []
         for game in games:
@@ -128,6 +155,12 @@ def render():
             p = forecast["probability"] if forecast else None
             outcome, score = actual(game)
             name, venue = matchup(game)
+            if opponent != "All opponents" and name != opponent:
+                continue
+            if result_filter != "Any result" and outcome != result_filter[0]:
+                continue
+            if graded_filter and not (saved and outcome):
+                continue
             rows.append({
                 "Tipoff (ET)": time(game["tip"]).strftime("%b %d · %I:%M %p"), "Opponent": name, "Court": venue,
                 "Pick": pick(p) if p is not None else "—", "Win chance": f"{p:.1%}" if p is not None else "—",
@@ -135,24 +168,44 @@ def render():
                 "Forecast": ("Correct" if outcome == pick(p) else "Miss") if saved and outcome
                 else ("Recorded" if saved else ("Early" if forecast else "—")),
             })
-        st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+        if rows:
+            visible = pd.DataFrame(rows)
+            st.dataframe(visible, hide_index=True, use_container_width=True)
+            st.download_button("Download this view", visible.to_csv(index=False), "knicks-games.csv", "text/csv")
+        else:
+            st.info("No games match these filters.")
         st.caption("Games completed before the first recorded pick show the final score only. TBD Cup matchups appear once teams are assigned.")
 
     with evaluation:
         backtest = model["backtest"]
-        a, b, c = st.columns(3)
+        a, b, c, d = st.columns(4)
         a.metric("Model W/L accuracy", f"{backtest['model']['accuracy']:.1%}")
         b.metric("Home-court baseline", f"{backtest['baseline']['accuracy']:.1%}")
-        c.metric("Held-out Knicks games", backtest["model"]["games"])
+        c.metric("Elo W/L accuracy", f"{backtest['elo']['accuracy']:.1%}")
+        d.metric("Held-out Knicks games", backtest["model"]["games"])
         st.write("The backtest predicts 2024–25 and 2025–26 Knicks games with a model fitted only on earlier seasons. Each prediction uses league results from earlier dates.")
         st.dataframe(pd.DataFrame([
             {"Season": f"{f['season']-1}–{str(f['season'])[-2:]}", "Games": f["model"]["games"],
              "Model accuracy": f"{f['model']['accuracy']:.1%}", "Baseline accuracy": f"{f['baseline']['accuracy']:.1%}",
-             "Model Brier": f"{f['model']['brier']:.3f}", "Baseline Brier": f"{f['baseline']['brier']:.3f}"}
+             "Elo accuracy": f"{f['elo']['accuracy']:.1%}", "Model Brier": f"{f['model']['brier']:.3f}",
+             "Baseline Brier": f"{f['baseline']['brier']:.3f}", "Elo Brier": f"{f['elo']['brier']:.3f}"}
             for f in backtest["folds"]
         ]), hide_index=True, use_container_width=True)
-        st.caption("Brier score measures probability error. Lower is better. The baseline uses the historical league home-win rate for every matchup.")
+        st.caption("Brier score measures probability error. Lower is better. The home-court baseline uses the historical league home-win rate. The Elo baseline uses team strength and venue without recent form or rest.")
+        st.subheader("This season’s saved picks")
+        a, b, c = st.columns(3)
+        a.metric("Graded picks", len(graded))
+        b.metric("W/L hit rate", f"{correct / len(graded):.1%}" if graded else "Pending")
+        c.metric("Live Brier score", f"{live_brier:.3f}" if live_brier is not None else "Pending")
         st.write(f"Live season tracking starts with the first saved pregame pick. So far, {correct} of {len(graded)} graded picks were correct.")
+
+    with film:
+        st.subheader("Back to the championship")
+        st.write("I grew up watching the Knicks with my dad. This is where I keep a couple of clips from the title run.")
+        title = st.selectbox("Choose a video", list(FILM))
+        st.link_button("Watch on YouTube", FILM[title])
+        if st.checkbox("Load the YouTube player"):
+            st.video(FILM[title])
 
 
 if __name__ == "__main__":

@@ -41,3 +41,13 @@ python -m unittest discover -s tests
 To reproduce the trained weights, install `requirements-training.txt` and run `python -m scripts.train`. Run `python -m scripts.refresh` to fetch the current season. Set up Streamlit Community Cloud with this repo, branch `main`, and entry point `app.py`. The original `model.py` path also launches the dashboard.
 
 Historical results were aggregated from the [NBA Cloud Data Platform](https://github.com/Mykeil-tzul/wonderworlds/tree/373000e259ef1c68681160fa04a329004e43606d) player game logs, sourced from the [nba_data archive](https://github.com/llimllib/nba_data). Current fixtures and scores come from [ESPN](https://www.espn.com/nba/team/schedule/_/name/ny/new-york-knicks). Team logo from the [NBA](https://www.nba.com/knicks/).
+
+## For Knicks fans
+
+Make your own W/L call for the matchup and compare it with the model. In the Season tracker, filter by opponent, wins or losses, or games with a graded pregame pick. You can download the filtered results. Model Performance shows the historical holdout separately from the accuracy and probability error of picks recorded this season. The Knicks Film Room has the team’s 2026 championship all-access and ESPN’s trophy ceremony.
+
+This update changes the dashboard and adds live-season evaluation. It uses the same trained model and leaves the existing forecast ledger intact.
+
+### A stronger comparison
+
+Plain Elo uses team strength and a fixed home-court adjustment, with ratings updated from earlier results. On the same 164 Knicks games, Elo picked the winner **69.5%** of the time versus **68.3%** for logistic regression. Logistic regression had lower Brier error (**0.195** versus **0.202**). I kept the logistic probabilities in the app and added both results so fans can see the difference between calling the winner and estimating the chance of a win.

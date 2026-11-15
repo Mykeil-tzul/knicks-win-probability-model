@@ -25,6 +25,11 @@ def historical_games():
         ]
 
 
+def elo_home_probability(features):
+    home_edge, elo_gap, *_ = features
+    return 1 / (1 + 10 ** (-(100 * elo_gap + 65 * home_edge) / 400))
+
+
 class Form:
     def __init__(self):
         self.elo = defaultdict(lambda: 1500.0)
@@ -62,8 +67,7 @@ class Form:
     def update(self, game, features):
         home, away = game["home"], game["away"]
         margin = game["home_score"] - game["away_score"]
-        home_edge, elo_gap, *_ = features
-        expected = 1 / (1 + 10 ** (-(100 * elo_gap + 65 * home_edge) / 400))
+        expected = elo_home_probability(features)
         change = 20 * (int(margin > 0) - expected)
         self.elo[home] += change
         self.elo[away] -= change
@@ -115,7 +119,7 @@ def train(history):
         estimator = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000))
         return estimator.fit([x for _, x in train_rows], [result(g) for g, _ in train_rows])
 
-    labels, predictions, baselines = [], [], []
+    labels, predictions, baselines, elo_predictions = [], [], [], []
     folds = []
     for season in (2025, 2026):
         earlier = [(g, x) for g, x in rows if g["season"] < season]
@@ -125,15 +129,19 @@ def train(history):
         actual = [result(g) if g["home"] == KNICKS else 1 - result(g) for g, _ in later]
         probs = [knicks_probability(g, p) for (g, _), (_, p) in zip(later, estimator.predict_proba([x for _, x in later]))]
         baseline = [knicks_probability(g, home_rate) for g, _ in later]
+        elo = [knicks_probability(g, elo_home_probability(x)) for g, x in later]
+        elo_predictions.extend(elo)
         labels.extend(actual)
         predictions.extend(probs)
         baselines.extend(baseline)
-        folds.append({"season": season, "model": metrics(actual, probs), "baseline": metrics(actual, baseline)})
+        folds.append({"season": season, "model": metrics(actual, probs), "baseline": metrics(actual, baseline),
+                      "elo": metrics(actual, elo)})
     estimator = fit(rows)
     scaler, regression = estimator.steps[0][1], estimator.steps[1][1]
     return {
         "weights": (regression.coef_[0] / scaler.scale_).tolist(),
         "intercept": float(regression.intercept_[0] - sum(regression.coef_[0] * scaler.mean_ / scaler.scale_)),
         "training_games": len(rows),
-        "backtest": {"model": metrics(labels, predictions), "baseline": metrics(labels, baselines), "folds": folds},
+        "backtest": {"model": metrics(labels, predictions), "baseline": metrics(labels, baselines),
+                     "elo": metrics(labels, elo_predictions), "folds": folds},
     }
