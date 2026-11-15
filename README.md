@@ -4,6 +4,10 @@
 
 I built this app to answer one question before each Knicks game in the 2026–27 regular season: how likely are they to win? Pick a matchup to see the model's W/L call, its win and loss probabilities, and the factors that moved the prediction. The season tracker puts those picks next to the actual scores.
 
+## Why I built this
+
+I was born and raised in New York City, and my family has rooted for the Knicks for as long as I can remember. My dad has been a die-hard Knicks fan my whole life. Seeing how happy he was when we won the championship last season is something I’ll always remember. Building this app felt like a fun way to follow the next season together.
+
 ## How it works
 
 The model is a logistic regression trained on 4,920 NBA regular-season games from 2022–23 through 2025–26. It learns from the entire league so it can compare the Knicks with the team they're about to play. It uses home court, the gap in team strength (Elo), recent scoring margins, recent win rates, and rest. The recent-form inputs use up to 10 games, with a small league-average starting point so the first few games of a season have less influence.
