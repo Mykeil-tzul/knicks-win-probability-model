@@ -145,7 +145,7 @@ def train_league():
     output = ROOT/"data/league-model.json"
     output.write_text(json.dumps(artifact,indent=2)+"\n")
     with (ROOT/"data/league-test-predictions.csv").open("w",newline="") as handle:
-        writer = csv.DictWriter(handle,fieldnames=["id","date","home","away","actual_home_margin",*WIN_MODELS,*MARGIN_MODELS])
+        writer = csv.DictWriter(handle,lineterminator="\n",fieldnames=["id","date","home","away","actual_home_margin",*WIN_MODELS,*MARGIN_MODELS])
         writer.writeheader()
         for (game,_),row in zip(final_rows,final_predictions):
             writer.writerow({**{k:game[k] for k in ("id","date","home","away")},
