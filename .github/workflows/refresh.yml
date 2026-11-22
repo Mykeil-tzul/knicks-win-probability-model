@@ -1,4 +1,4 @@
-name: Refresh Knicks forecasts
+name: Refresh NBA and Knicks forecasts
 on:
   schedule:
     - cron: '17 * * * *'
@@ -22,6 +22,6 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add data/season.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'Refresh Knicks schedule and forecasts'
+          git commit -m 'Refresh NBA schedule and forecasts'
           git pull --rebase origin main
           git push origin HEAD:main

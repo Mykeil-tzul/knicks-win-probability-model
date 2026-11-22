@@ -39,7 +39,7 @@ class ForecastTests(unittest.TestCase):
         self.assertGreaterEqual(len(snapshot["knicks"]), 75)
         app = AppTest.from_file(str(ROOT / "app.py")).run(timeout=20)
         self.assertFalse(app.exception)
-        self.assertEqual(len(app.tabs), 0)
+        self.assertEqual(len(app.tabs), 3)
         self.assertEqual([heading.value for heading in app.header],
-                         ["Knicks Film Room", "Game preview", "Season tracker", "Model performance"])
+                         ["Any team. Any matchup.", "Knicks Film Room", "Game preview", "Season tracker", "Model performance", "What improved on the baselines?"])
         self.assertEqual(len(app.get("video")), 2)

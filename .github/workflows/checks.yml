@@ -1,0 +1,30 @@
+name: NBA forecast checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-training.txt
+      - run: python -m unittest discover -s tests -v
+      - name: Reproduce league model and final-test predictions
+        run: |
+          cp data/league-model.json /tmp/league-model-original.json
+          python -m scripts.train_league
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          before = json.loads(Path("/tmp/league-model-original.json").read_text())
+          after = json.loads(Path("data/league-model.json").read_text())
+          assert before["history_sha256"] == after["history_sha256"]
+          assert before["selected_win"] == after["selected_win"]
+          assert before["selected_margin"] == after["selected_margin"]
+          for task, metric in [("wins", "brier"), ("margins", "mae")]:
+              for name, row in before["final_test"][task].items():
+                  assert abs(row[metric] - after["final_test"][task][name][metric]) < 1e-8
+          PY

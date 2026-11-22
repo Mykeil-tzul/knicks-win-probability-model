@@ -5,10 +5,12 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from time import sleep
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
-from forecast import ROOT, TEAM_IDS, historical_games, is_knicks, knicks_probability, pregame_rows
+from forecast import ROOT, CODES, TEAM_IDS, historical_games, is_knicks, knicks_probability, pregame_rows
+from league import prediction
 
 ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/"
 ET = ZoneInfo("America/New_York")
@@ -17,16 +19,20 @@ END = date(2027, 4, 30)
 SNAPSHOT = ROOT / "data/season.json"
 
 
-def fetch(path):
-    request = Request(ESPN + path, headers={"User-Agent": "StatMatch-KnicksPortfolio/1.0"})
-    for attempt in range(2):
+def fetch_document(path):
+    request = Request(ESPN + path, headers={"User-Agent": "NBA-Matchup-Lab/1.0"})
+    for attempt in range(3):
         try:
             with urlopen(request, timeout=12) as response:
-                return json.load(response)["events"]
+                return json.load(response)
         except (OSError, ValueError, KeyError):
-            if attempt:
+            if attempt == 2:
                 raise
+            sleep(.5 * 2 ** attempt)
 
+
+def fetch(path):
+    return fetch_document(path)["events"]
 
 def parse(event):
     season = event["season"]
@@ -88,6 +94,23 @@ def build_forecasts(history, games, model, old_ledger, check_started, generated)
     return projections, ledger
 
 
+def build_league_forecasts(history, games, model, old_ledger, check_started, generated):
+    """Home-oriented picks with immutable first-pregame records."""
+    ledger = dict(old_ledger)
+    projections = {}
+    for game, features in pregame_rows([*history, *games]):
+        if game["season"] != 2027 or game["state"] != "scheduled":
+            continue
+        tip = datetime.fromisoformat(game["tip"])
+        if tip <= generated:
+            continue
+        entry = {**prediction(model, features), "generated": generated.isoformat(), "tip": game["tip"]}
+        projections[game["id"]] = entry
+        if timedelta(0) < tip - check_started <= timedelta(hours=24):
+            ledger.setdefault(game["id"], entry)
+    return projections, ledger
+
+
 def write_snapshot(payload):
     with NamedTemporaryFile(mode="w", dir=SNAPSHOT.parent, delete=False) as temporary:
         json.dump(payload, temporary, separators=(",", ":"))
@@ -106,14 +129,26 @@ def main():
     last = date.fromisoformat(current["through"]) if current else START
     first = max(START, last - timedelta(days=4))
     dates = [first + timedelta(days=offset) for offset in range((day - first).days + 1)]
-    paths = ["teams/ny/schedule?season=2027", *[f"scoreboard?dates={d:%Y%m%d}" for d in dates]]
+    catalog = fetch_document("teams?limit=100")
+    espn_ids = {TEAM_IDS[row["team"]["abbreviation"]]: row["team"]["id"]
+                for row in catalog["sports"][0]["leagues"][0]["teams"]
+                if row["team"]["abbreviation"] in TEAM_IDS}
+    if set(espn_ids) != {TEAM_IDS[code] for code in CODES}:
+        raise ValueError("ESPN team catalog does not cover all 30 teams")
+    paths = [*[f"teams/{espn_ids[TEAM_IDS[code]]}/schedule?season=2027" for code in CODES],
+             *[f"scoreboard?dates={d:%Y%m%d}" for d in dates]]
     with ThreadPoolExecutor(max_workers=4) as pool:
         responses = list(pool.map(fetch, paths))
-    schedule = {game["id"]: game for event in responses[0] if (game := parse(event))}
-    if len(schedule) < 75 or any(not is_knicks(game) for game in schedule.values()):
-        raise ValueError("Knicks feed returned an incomplete schedule")
+    schedule = {}
+    for code, response in zip(CODES, responses[:len(CODES)]):
+        team_games = {game["id"]: game for event in response if (game := parse(event))}
+        if len(team_games) < 75 or any(TEAM_IDS[code] not in (game["home"], game["away"]) for game in team_games.values()):
+            raise ValueError(f"{code} feed returned an incomplete schedule")
+        schedule.update(team_games)
+    if len(schedule) < 1100:
+        raise ValueError("League schedule is incomplete")
     finals = {game["id"]: game for game in current.get("finals", [])}
-    for event in (event for response in responses[1:] for event in response):
+    for event in (event for response in responses[len(CODES):] for event in response):
         game = parse(event)
         if game and game["state"] == "final":
             finals[game["id"]] = game
@@ -126,12 +161,19 @@ def main():
     projections, ledger = build_forecasts(
         historical_games(), games.values(), model, current.get("ledger", {}), started, generated,
     )
+    league_model = json.loads((ROOT / "data/league-model.json").read_text())
+    league_projections, league_ledger = build_league_forecasts(
+        historical_games(), games.values(), league_model, current.get("league_ledger", {}), started, generated,
+    )
     write_snapshot({
         "updated": generated.isoformat(), "through": day.isoformat(), "finals": sorted(finals.values(), key=lambda g: g["tip"]),
         "knicks": sorted((game for game in games.values() if is_knicks(game)), key=lambda g: g["tip"]),
         "projections": projections, "ledger": ledger,
+        "league_games": sorted(games.values(), key=lambda g: g["tip"]),
+        "league_projections": league_projections, "league_ledger": league_ledger,
+        "league_model_version": league_model["model_version"],
     })
-    print(f"Published {len(schedule)} Knicks games, {len(finals)} league finals, and {len(projections)} upcoming projections.")
+    print(f"Published {len(schedule)} league games, {len(finals)} league finals, and {len(projections)} upcoming projections.")
 
 
 if __name__ == "__main__":

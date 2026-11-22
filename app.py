@@ -1,4 +1,4 @@
-"""Knicks pregame forecasts and prediction results."""
+"""NBA matchup forecasts with a dedicated Knicks experience."""
 import base64
 import json
 from datetime import datetime, timedelta, timezone
@@ -59,11 +59,11 @@ FILM = {
 }
 
 
-def render():
-    st.set_page_config(page_title="Knicks Win Predictor", page_icon="🏀", layout="wide")
+def render_knicks(season, model):
     st.markdown("""
         <style>
         .stApp {background: #081221;}
+        .block-container {padding-top:2rem;}
         .knicks-hero {display:flex; align-items:center; gap:1.45rem; flex-wrap:wrap;
           border:1px solid #345788; border-left:5px solid #ff8547; border-radius:20px;
           padding:1.6rem 2rem;
@@ -93,8 +93,6 @@ def render():
         </nav>
         """, unsafe_allow_html=True)
 
-    season = json.loads((ROOT / "data/season.json").read_text())
-    model = json.loads((ROOT / "data/model.json").read_text())
     games, ledger = season["knicks"], season["ledger"]
     now = datetime.now(timezone.utc)
     st.caption(f"Schedule and scores from ESPN · Updated {time(season['updated']):%b %d at %I:%M %p ET}")
@@ -220,6 +218,23 @@ def render():
         b.metric("W/L hit rate", f"{correct / len(graded):.1%}" if graded else "Pending")
         c.metric("Live Brier score", f"{live_brier:.3f}" if live_brier is not None else "Pending")
         st.write(f"Live season tracking starts with the first saved pregame pick. So far, {correct} of {len(graded)} graded picks were correct.")
+
+
+def render():
+    from league_ui import render_league, render_research
+    st.set_page_config(page_title="NBA Matchup Lab · Knicks Corner", page_icon="🏀", layout="wide")
+    st.title("NBA Matchup Lab")
+    st.write("Pick a matchup. Explore the win chance, expected point margin, and the evidence behind the forecast.")
+    season = json.loads((ROOT / "data/season.json").read_text())
+    legacy_model = json.loads((ROOT / "data/model.json").read_text())
+    artifact = json.loads((ROOT / "data/league-model.json").read_text())
+    league_tab, knicks_tab, research_tab = st.tabs(["🏀 All 30 teams", "🗽 Knicks Corner", "📊 Model research & poster"])
+    with league_tab:
+        render_league(season, artifact)
+    with knicks_tab:
+        render_knicks(season, legacy_model)
+    with research_tab:
+        render_research(artifact)
 
 
 if __name__ == "__main__":
